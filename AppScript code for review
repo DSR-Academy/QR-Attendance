@@ -1,0 +1,70 @@
+function doGet(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+
+  if (e.parameter.check == "1") {
+    const email = e.parameter.email;
+    const transactionId = e.parameter.transactionId;
+
+    let exists = false;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][3] == email && data[i][4] == transactionId) {
+        exists = true;
+        break;
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ exists }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (e.parameter.login == "1") {
+    const email = e.parameter.email;
+    const password = e.parameter.password;
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][3] == email && data[i][5] == password) {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: true,
+          firstName: data[i][1],
+          lastName: data[i][2],
+          transactionId: data[i][4]
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ success: false }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = JSON.parse(e.postData.contents);
+
+  if (data.mode === "register") {
+    sheet.appendRow([
+      new Date(),
+      data.firstName,
+      data.lastName,
+      data.email,
+      data.transactionId,
+      data.password,
+      "Registered"
+    ]);
+  }
+
+  if (data.mode === "attendance") {
+    sheet.appendRow([
+      new Date(),
+      data.firstName,
+      data.lastName,
+      data.email,
+      data.transactionId,
+      "", // no password
+      "Login"
+    ]);
+  }
+
+  return ContentService.createTextOutput("OK");
+}
