@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exam Attendance Portal</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .form-container { max-width: 400px; margin: auto; }
+    input, button { width: 100%; padding: 10px; margin: 5px 0; }
+    h2 { text-align: center; }
+  </style>
+</head>
+<body>
+
+<h2>Exam Attendance Portal</h2>
+
+<div id="registration" class="form-container" style="display:none;">
+  <h3>Register</h3>
+  <input type="text" id="regFirstName" placeholder="First Name" required>
+  <input type="text" id="regLastName" placeholder="Last Name" required>
+  <input type="email" id="regEmail" placeholder="Email" required>
+  <input type="text" id="regTransactionId" placeholder="Transaction ID" required>
+  <input type="password" id="regPassword" placeholder="Password" required>
+  <button onclick="checkAndRegister()">Register</button>
+  <p>Already registered? <a href="#" onclick="showLogin()">Login here</a></p>
+</div>
+
+<div id="login" class="form-container" style="display:none;">
+  <h3>Login</h3>
+  <input type="email" id="loginEmail" placeholder="Email" required>
+  <input type="password" id="loginPassword" placeholder="Password" required>
+  <button onclick="login()">Login</button>
+  <p>Don't have an account? <a href="#" onclick="showRegister()">Register here</a></p>
+</div>
+
+<script>
+const scriptURL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; // Replace with your actual Apps Script URL
+
+function showRegister() {
+  document.getElementById("login").style.display = "none";
+  document.getElementById("registration").style.display = "block";
+}
+
+function showLogin() {
+  document.getElementById("registration").style.display = "none";
+  document.getElementById("login").style.display = "block";
+}
+
+function checkAndRegister() {
+  const firstName = document.getElementById("regFirstName").value.trim();
+  const lastName = document.getElementById("regLastName").value.trim();
+  const email = document.getElementById("regEmail").value.trim().toLowerCase();
+  const transactionId = document.getElementById("regTransactionId").value.trim();
+  const password = document.getElementById("regPassword").value.trim();
+
+  if (!firstName || !lastName || !email || !transactionId || !password) {
+    alert("Please fill all fields!");
+    return;
+  }
+
+  fetch(`${scriptURL}?check=1&email=${encodeURIComponent(email)}&transactionId=${encodeURIComponent(transactionId)}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.exists) {
+        alert("An account with this email and transaction ID already exists. Please login.");
+        showLogin();
+      } else {
+        const payload = {
+          mode: "register",
+          firstName,
+          lastName,
+          email,
+          transactionId,
+          password
+        };
+        fetch(scriptURL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        alert("Registration successful! You can now log in.");
+        showLogin();
+      }
+    });
+}
+
+function login() {
+  const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+  const password = document.getElementById("loginPassword").value.trim();
+
+  fetch(`${scriptURL}?login=1&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        // Send attendance entry
+        fetch(scriptURL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "attendance",
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: email,
+            transactionId: data.transactionId,
+            timestamp: new Date().toISOString()
+          })
+        });
+        alert("Login successful. Attendance recorded.");
+      } else {
+        alert("Invalid email or password.");
+      }
+    });
+}
+
+window.onload = function () {
+  showRegister();
+};
+</script>
+
+</body>
+</html>
