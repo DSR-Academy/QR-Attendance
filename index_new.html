@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exam QR Scanner - Attendance</title>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<style>
+body { font-family: Arial; margin: 20px; }
+#registration, #scanner, #logout { max-width: 400px; margin: auto; }
+input, button { width: 100%; padding: 10px; margin: 5px 0; }
+#reader { width: 100%; margin-top: 20px; }
+#status { margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h2>Exam Attendance</h2>
+
+<div id="registration" style="display:none;">
+<h3>Register</h3>
+<input type="text" id="firstName" placeholder="First Name" required />
+<input type="text" id="lastName" placeholder="Last Name" required />
+<input type="text" id="transactionId" placeholder="Transaction ID" required />
+<button onclick="registerUser()">Register</button>
+</div>
+
+<div id="scanner" style="display:none;">
+<h3>Welcome, <span id="userName"></span>!</h3>
+<div id="reader"></div>
+<p id="status"></p>
+<button onclick="logout()">Logout</button>
+</div>
+
+<script>
+const scriptURL = "https://script.google.com/macros/s/AKfycbyxT3J3ooDEnujcU372JCgUX3ZGJEvMLCXZLf59MOEAiC0nwpOeeflU1hReG41mJ_Gbbg/exec"; // Replace this with your script URL
+
+function checkUser() {
+const user = localStorage.getItem('examUser');
+if (user) {
+const userData = JSON.parse(user);
+document.getElementById("userName").innerText = `${userData.firstName} ${userData.lastName}`;
+document.getElementById("registration").style.display = "none";
+document.getElementById("scanner").style.display = "block";
+startScanner();
+} else {
+document.getElementById("registration").style.display = "block";
+}
+}
+
+function registerUser() {
+const firstName = document.getElementById("firstName").value.trim();
+const lastName = document.getElementById("lastName").value.trim();
+const transactionId = document.getElementById("transactionId").value.trim();
+
+if (!firstName || !lastName || !transactionId) {
+alert("Please fill in all fields!");
+return;
+}
+
+const userData = { firstName, lastName, transactionId };
+localStorage.setItem('examUser', JSON.stringify(userData));
+location.reload(); // Refresh to load the scanner
+}
+
+function startScanner() {
+const html5QrCode = new Html5Qrcode("reader");
+
+const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+html5QrCode.stop().then(() => {
+document.getElementById("status").innerText = `QR Code Scanned: ${decodedText}`;
+sendScanData(decodedText);
+setTimeout(() => {
+location.reload();
+}, 2000); // Restart scanner after a few seconds
+});
+};
+
+html5QrCode.start({ facingMode: "environment" }, {
+fps: 10,
+qrbox: 250
+}, qrCodeSuccessCallback);
+}
+
+function sendScanData(scannedText) {
+const user = JSON.parse(localStorage.getItem('examUser'));
+const timestamp = new Date().toISOString();
+
+fetch(scriptURL, {
+method: "POST",
+mode: "no-cors",
+headers: {
+"Content-Type": "application/json"
+},
+body: JSON.stringify({
+firstName: user.firstName,
+lastName: user.lastName,
+transactionId: user.transactionId,
+scannedText: scannedText,
+scannedAt: timestamp
+})
+});
+
+document.getElementById("status").innerText += "\nAttendance Recorded!";
+}
+
+function logout() {
+localStorage.removeItem('examUser');
+location.reload();
+}
+
+window.onload = checkUser;
+</script>
+
+</body>
+</html>
